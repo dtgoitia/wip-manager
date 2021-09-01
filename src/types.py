@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import Iterable, List
 
 MarkdownStr = str
 TaskDetail = str
@@ -12,14 +12,30 @@ DETAIL_PREFIX = "- "
 _NO_DETAILS: List[TaskDetail] = []
 TASK_TAG_PATTERN = re.compile(r"\s#([a-z]:[a-z0-9-_,]*)\s?")  # `#g:group1_b`
 LINE_IS_TASK_PATTERN = re.compile(r"^- \[")  # starts with `- [ ] ` or `- [x] `
+LINE_IS_EXTERNAL_REFERENCE_PATTERN = re.compile(r"^\[0-9\]:\s ")  # starts with `[31]: `
 
 
 @dataclass
 class Task:
     description: str
-    completed: bool
+    done: bool
     details: List[TaskDetail]
     tags: List[TaskTag]
+
+    def to_str(self) -> str:
+        tags = " ".join(f"#{tag}" for tag in self.tags)
+        task_prefix = COMPLETED_TASK_PREFIX if self.done else INCOMPLETE_TASK_PREFIX
+        if tags:
+            task = f"{task_prefix}{self.description}  {tags}"
+        else:
+            task = f"{task_prefix}{self.description}"
+
+        lines = [
+            task,
+            *[f"  {DETAIL_PREFIX}{detail}" for detail in self.details],
+        ]
+
+        return "\n".join(lines)
 
 
 def parse(raw: MarkdownStr) -> List[Task]:
@@ -90,7 +106,7 @@ def parse_task(raw: MarkdownStr) -> Task:
 
     return Task(
         description=description,
-        completed=completed,
+        done=completed,
         details=details,
         tags=tags,
     )
@@ -101,3 +117,9 @@ def parse_details(raw_details: MarkdownStr) -> List[TaskDetail]:
     raw_per_detail = (line for line in lines if line.startswith(DETAIL_PREFIX))
     details = [raw_detail.replace(DETAIL_PREFIX, "") for raw_detail in raw_per_detail]
     return details
+
+
+def deserialize_content(data: Iterable) -> MarkdownStr:
+    lines = [item.to_str() for item in data]
+    content = "\n".join(lines)
+    return content
