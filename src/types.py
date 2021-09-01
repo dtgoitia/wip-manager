@@ -1,10 +1,11 @@
 import re
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Any, Dict, Iterable, List
 
 MarkdownStr = str
 TaskDetail = str
 TaskTag = str
+JsonDict = Dict[str, Any]
 
 INCOMPLETE_TASK_PREFIX = "- [ ] "
 COMPLETED_TASK_PREFIX = "- [x] "
