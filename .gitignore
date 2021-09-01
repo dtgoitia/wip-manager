@@ -1,0 +1,5 @@
+report.html
+
+# Log related files and directories
+*.log
+logs/
