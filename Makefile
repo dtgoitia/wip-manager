@@ -32,3 +32,6 @@ format:
 
 test:
 	pytest tests -vv
+
+dev-test:
+	pytest tests -vv -s
