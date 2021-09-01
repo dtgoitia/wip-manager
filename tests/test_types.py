@@ -35,6 +35,27 @@ def test_parse_a_single_uncompleted_task_with_details():
     )
 
 
+def test_parse_a_task_with_hyphen():
+    raw: MarkdownStr = "- [ ] Do foo - bar"
+    tasks = parse(raw)
+    content = tasks
+    parsed_raw = deserialize_content(content)
+    assert raw == parsed_raw
+
+
+def test_parse_a_detail_with_hyphen():
+    raw: MarkdownStr = (
+        "- [ ] Do foo"
+        "\n  - details line - 1"
+        "\n  - details line 2"
+        "\n  - details line - - 3"
+    )
+    tasks = parse(raw)
+    content = tasks
+    parsed_raw = deserialize_content(content)
+    assert raw == parsed_raw
+
+
 def test_parse_a_single_uncompleted_task_with_tags():
     raw: MarkdownStr = "- [ ] Do foo  #g:group1"
     task = parse_task(raw)

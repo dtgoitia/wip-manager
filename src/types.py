@@ -116,7 +116,7 @@ def parse_task(raw: MarkdownStr) -> Task:
 def parse_details(raw_details: MarkdownStr) -> List[TaskDetail]:
     lines = (line.strip() for line in raw_details.strip().split("\n"))
     raw_per_detail = (line for line in lines if line.startswith(DETAIL_PREFIX))
-    details = [raw_detail.replace(DETAIL_PREFIX, "") for raw_detail in raw_per_detail]
+    details = [line.replace(DETAIL_PREFIX, "", 1) for line in raw_per_detail]
     return details
 
 
