@@ -16,6 +16,15 @@ TASK_TAG_PATTERN = re.compile(r"\s#([a-z]:[a-z0-9-_,]*)\s?")  # `#g:group1_b`
 LINE_IS_TASK_PATTERN = re.compile(r"^- \[")  # starts with `- [ ] ` or `- [x] `
 LINE_IS_DETAIL_PATTERN = re.compile(r"^  - ")  # starts with `  - `
 LINE_IS_EXTERNAL_REFERENCE_PATTERN = re.compile(r'\[([0-9]+)\]: ([^\s]+)\s"(.*)"$')
+LINE_IS_TITLE_PATTERN = re.compile(r"^## (.*)$")
+
+
+@dataclass
+class Title:
+    title: str
+
+    def to_str(self) -> str:
+        return f"## {self.title}"
 
 
 @dataclass
@@ -63,10 +72,13 @@ class EmptyLine:
     def to_str(self) -> str:
         return ""
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
 
 class ExternalReferencesHeader:
     def to_str(self) -> str:
-        return "\n<!-- External references -->\n"
+        return "<!-- External references -->"
 
 
 @dataclass
@@ -79,14 +91,8 @@ class ExternalReference:
         return f'[{self.number}]: {self.url} "{self.description}"'
 
 
-PseudoItem = Union[
-    Task,
-    TaskDetail,
-    EmptyLine,
-    ExternalReferencesHeader,
-    ExternalReference,
-]
-Item = Union[Task, ExternalReferencesHeader, ExternalReference]
+Item = Union[Title, EmptyLine, Task, ExternalReferencesHeader, ExternalReference]
+PseudoItem = Union[Item, TaskDetail]
 
 
 def parse(raw: MarkdownStr) -> List[Item]:
@@ -109,27 +115,16 @@ def parse(raw: MarkdownStr) -> List[Item]:
         # identify current line type
         # check buffer
         # decide if to flush buffer or to compose with buffer
-        line_is_empty = line == ""
-        if line_is_empty:
-            empty_line = EmptyLine()
-            if not buffer:
-                buffer = empty_line
-                continue
-            else:
-                # Flush buffer and add parsed line
+        if is_empty_line(line):
+            if buffer:
                 parsed_items.append(cast(Item, buffer))
-                if isinstance(buffer, ExternalReferencesHeader):
-                    # case: new line after ExternalReferencesHeader
-                    # no need to add anything to the buffer
-                    buffer = None
-                    # TODO: perhaps is best to not to flush this and flush once the
-                    # first external reference is found?
-                else:
-                    buffer = empty_line
-                continue
+                buffer = None
 
-        line_is_task = is_task(line)
-        if line_is_task:
+            empty_line = EmptyLine()
+            parsed_items.append(empty_line)
+            continue
+
+        if is_task(line):
             task = parse_task(line)
             if not buffer:
                 buffer = task
@@ -140,8 +135,7 @@ def parse(raw: MarkdownStr) -> List[Item]:
                 buffer = task
                 continue
 
-        line_is_detail = is_detail(line)
-        if line_is_detail:
+        if is_detail(line):
             task_detail = parse_task_detail(line)
             if not buffer:
                 raise ValueError("You cannot have details outside a task")
@@ -152,17 +146,23 @@ def parse(raw: MarkdownStr) -> List[Item]:
                 buffer = updated_task
                 continue
 
-        line_is_external_reference_header = is_external_references_header(line)
-        if line_is_external_reference_header:
-            if not buffer:
+        if is_external_references_header(line):
+            previous_line = parsed_items[-1]
+            if not isinstance(previous_line, EmptyLine):
                 raise ValueError("Empty line expected before external reference header")
-            else:
-                # Compose header with new line in buffer
-                buffer = ExternalReferencesHeader()
-                continue
 
-        line_is_external_reference = is_external_reference(line)
-        if line_is_external_reference:
+            external_references_header = ExternalReferencesHeader()
+            next_line = next(lines)
+            if not is_empty_line(next_line):
+                raise ValueError("Empty line expected after external reference header")
+
+            parsed_items.append(external_references_header)
+            parsed_items.append(EmptyLine())
+
+            buffer = None
+            continue
+
+        if is_external_reference(line):
             if buffer:
                 raise ValueError("Empty line expected before external references")
 
@@ -172,12 +172,30 @@ def parse(raw: MarkdownStr) -> List[Item]:
             # can be added to the WIP file
             continue
 
+        if is_title(line):
+            assert not buffer, "I didn't expect to have anyhting bufered at this point"
+
+            title = parse_title(line)
+            parsed_items.append(title)
+
+            continue
+
         raise NotImplementedError(f"Line {line!r} not understood")
 
     if buffer:
         parsed_items.append(cast(Item, buffer))
 
     return parsed_items
+
+
+def is_title(raw_line: MarkdownStr) -> bool:
+    title_pattern_in_line = LINE_IS_TITLE_PATTERN.match(raw_line)
+    _is_title = bool(title_pattern_in_line)
+    return _is_title
+
+
+def is_empty_line(raw_line: MarkdownStr) -> bool:
+    return raw_line == ""
 
 
 def is_task(raw_line: MarkdownStr) -> bool:
@@ -200,6 +218,10 @@ def is_external_reference(raw_line: MarkdownStr) -> bool:
     detail_patterns_in_line = LINE_IS_EXTERNAL_REFERENCE_PATTERN.match(raw_line)
     _is_external_reference = bool(detail_patterns_in_line)
     return _is_external_reference
+
+
+def parse_title(raw_line: MarkdownStr) -> Title:
+    return Title(title=raw_line.replace("## ", ""))
 
 
 def parse_task(raw_line: MarkdownStr) -> Task:

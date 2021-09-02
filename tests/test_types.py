@@ -4,12 +4,15 @@ from src.types import (
     MarkdownStr,
     Task,
     TaskDetail,
+    Title,
     deserialize_content,
     is_external_reference,
     is_external_references_header,
+    is_title,
     parse,
     parse_task,
     parse_task_detail,
+    parse_title,
 )
 
 
@@ -151,6 +154,46 @@ def test_line_is_external_reference():
     line = '[1]: https://example.com/a-1_U "Example page"'
     result = is_external_reference(line)
     assert result is True
+
+
+@pytest.mark.parametrize(
+    ("raw_line"),
+    (
+        pytest.param("## Tasks to focus on", id="focus_tasks_title"),
+        pytest.param("## Backlog", id="backlog_title"),
+    ),
+)
+def test_line_is_title(raw_line):
+    result = is_title(raw_line)
+    assert result is True
+
+
+def test_parse_title():
+    raw: MarkdownStr = "## Tasks to focus on"
+    title = parse_title(raw)
+    assert title == Title(title="Tasks to focus on")
+
+
+def test_parse_wip_document_with_titles():
+    raw: MarkdownStr = "\n".join(
+        (
+            "## Tasks to focus on",
+            "",
+            "- [ ] Task for today",
+            "",
+            "## Backlog",
+            "",
+            "- [ ] Future task",
+            "",
+            "<!-- External references -->",
+            "",
+            '[1]: https://example.com "Example page"',
+            "",
+        )
+    )
+    items = parse(raw)
+    parsed_raw = deserialize_content(items)
+    assert raw == parsed_raw
 
 
 @pytest.mark.skip(reason="TODO")
