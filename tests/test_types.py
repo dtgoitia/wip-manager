@@ -1,6 +1,16 @@
 import pytest
 
-from src.types import MarkdownStr, Task, deserialize_content, parse, parse_task
+from src.types import (
+    MarkdownStr,
+    Task,
+    TaskDetail,
+    deserialize_content,
+    is_external_reference,
+    is_external_references_header,
+    parse,
+    parse_task,
+    parse_task_detail,
+)
 
 
 def test_parse_a_single_uncompleted_task():
@@ -22,17 +32,19 @@ def test_parse_a_single_uncompleted_task_with_details():
         "\n  - details line 2"
         "\n  - details line 3"
     )
-    task = parse_task(raw)
-    assert task == Task(
-        description="Do foo",
-        done=False,
-        details=[
-            "details line 1",
-            "details line 2",
-            "details line 3",
-        ],
-        tags=[],
-    )
+    items = parse(raw)
+    assert items == [
+        Task(
+            description="Do foo",
+            done=False,
+            details=[
+                TaskDetail(description="details line 1"),
+                TaskDetail(description="details line 2"),
+                TaskDetail(description="details line 3"),
+            ],
+            tags=[],
+        )
+    ]
 
 
 def test_parse_a_task_with_hyphen():
@@ -43,17 +55,16 @@ def test_parse_a_task_with_hyphen():
     assert raw == parsed_raw
 
 
+def test_parse_a_detail():
+    raw: MarkdownStr = "  - line with details"
+    detail = parse_task_detail(raw)
+    assert detail == TaskDetail(description="line with details")
+
+
 def test_parse_a_detail_with_hyphen():
-    raw: MarkdownStr = (
-        "- [ ] Do foo"
-        "\n  - details line - 1"
-        "\n  - details line 2"
-        "\n  - details line - - 3"
-    )
-    tasks = parse(raw)
-    content = tasks
-    parsed_raw = deserialize_content(content)
-    assert raw == parsed_raw
+    raw: MarkdownStr = "  - line with details - and a hyphen"
+    detail = parse_task_detail(raw)
+    assert detail == TaskDetail(description="line with details - and a hyphen")
 
 
 def test_parse_a_single_uncompleted_task_with_tags():
@@ -77,7 +88,12 @@ def test_parse_multiple_tasks():
     tasks = parse(raw)
     assert tasks == [
         Task(description="Do foo", done=False, details=[], tags=["g:group1"]),
-        Task(description="Do bar", done=False, details=["Some details"], tags=[]),
+        Task(
+            description="Do bar",
+            done=False,
+            details=[TaskDetail(description="Some details")],
+            tags=[],
+        ),
         Task(description="Do baz", done=False, details=[], tags=["p:priority_a"]),
     ]
 
@@ -92,6 +108,49 @@ def test_parse_and_restore_tasks_in_the_right_shape():
     tasks = parse(raw)
     parsed_raw = deserialize_content(tasks)
     assert raw == parsed_raw
+
+
+def test_parse_external_references_header():
+    raw: MarkdownStr = "\n".join(
+        [
+            "- [ ] Last task",
+            "",
+            "<!-- External references -->",
+            "",
+        ]
+    )
+    items = parse(raw)
+    parsed_raw = deserialize_content(items)
+    assert raw == parsed_raw
+
+
+def test_parse_external_references():
+    raw: MarkdownStr = "\n".join(
+        (
+            "- [ ] Last task",
+            "",
+            "<!-- External references -->",
+            "",
+            '[1]: https://example.com "Example page"',
+            '[2]: https://example2.com "Example page 2"',
+            "",
+        )
+    )
+    items = parse(raw)
+    parsed_raw = deserialize_content(items)
+    assert raw == parsed_raw
+
+
+def test_line_is_external_references_header():
+    line = "<!-- External references -->"
+    result = is_external_references_header(line)
+    assert result is True
+
+
+def test_line_is_external_reference():
+    line = '[1]: https://example.com/a-1_U "Example page"'
+    result = is_external_reference(line)
+    assert result is True
 
 
 @pytest.mark.skip(reason="TODO")
