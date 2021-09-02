@@ -10,10 +10,16 @@ def wip_group():
 
 
 @wip_group.command(name="validate", help="Validate WIP file")
-def validate_cmd() -> None:
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Dump to compare against the original file",
+)
+def validate_cmd(debug: bool) -> None:
     config = get_config()
     default_wip_path = config.wip_path
-    validate_wip_file(path=default_wip_path)
+    validate_wip_file(path=default_wip_path, debug=debug)
 
 
 if __name__ == "__main__":
