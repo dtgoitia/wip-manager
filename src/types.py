@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 MarkdownStr = str
 TaskTag = str
@@ -96,7 +96,7 @@ Item = Union[Title, EmptyLine, Task, ExternalReferencesHeader, ExternalReference
 PseudoItem = Union[Item, TaskDetail]
 
 
-def parse(raw: MarkdownStr) -> List[Item]:
+def parse_items(raw: MarkdownStr) -> List[Item]:
     # TODO: this function needs a decent refactor
     """
     if line is task, create new task and buffer it
@@ -281,3 +281,18 @@ def deserialize_content(data: Iterable) -> MarkdownStr:
     lines = [item.to_str() for item in data]
     content = "\n".join(lines)
     return content
+
+
+def separate_completed_items(items: List[Item]) -> Tuple[List[Task], List[Item]]:
+    """Collect completed tasks and return them together with remaining tasks."""
+    completed_tasks: List[Task] = []
+    remainig_items: List[Item] = []
+
+    for item in items:
+        if isinstance(item, Task) and item.done:
+            completed_task = item
+            completed_tasks.append(completed_task)
+        else:
+            remainig_items.append(item)
+
+    return completed_tasks, remainig_items

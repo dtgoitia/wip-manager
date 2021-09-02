@@ -1,12 +1,12 @@
 from pathlib import Path
 
 from src.io import read_markdown_file
-from src.types import deserialize_content, parse
+from src.types import deserialize_content, parse_items
 
 
 def validate_wip_file(*, path: Path, debug: bool) -> None:
     original_content = read_markdown_file(path=path)
-    items = parse(original_content)
+    items = parse_items(original_content)
     parsed_content = deserialize_content(items)
 
     if debug:

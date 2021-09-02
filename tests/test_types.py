@@ -9,7 +9,7 @@ from src.types import (
     is_external_reference,
     is_external_references_header,
     is_title,
-    parse,
+    parse_items,
     parse_task,
     parse_task_detail,
     parse_title,
@@ -35,7 +35,7 @@ def test_parse_a_single_uncompleted_task_with_details():
         "\n  - details line 2"
         "\n  - details line 3"
     )
-    items = parse(raw)
+    items = parse_items(raw)
     assert items == [
         Task(
             description="Do foo",
@@ -52,7 +52,7 @@ def test_parse_a_single_uncompleted_task_with_details():
 
 def test_parse_a_task_with_hyphen():
     raw: MarkdownStr = "- [ ] Do foo - bar"
-    tasks = parse(raw)
+    tasks = parse_items(raw)
     content = tasks
     parsed_raw = deserialize_content(content)
     assert raw == parsed_raw
@@ -83,7 +83,7 @@ def test_parse_multiple_tasks():
         "  - Some details\n"
         "- [ ] Do baz  #p:priority_a"
     )
-    tasks = parse(raw)
+    tasks = parse_items(raw)
     assert tasks == [
         Task(description="Do foo", done=False, details=[], tags=["g:group1"]),
         Task(
@@ -103,7 +103,7 @@ def test_parse_and_restore_tasks_in_the_right_shape():
         "  - Some details\n"
         "- [ ] Do baz  #p:priority_a"
     )
-    tasks = parse(raw)
+    tasks = parse_items(raw)
     parsed_raw = deserialize_content(tasks)
     assert raw == parsed_raw
 
@@ -117,7 +117,7 @@ def test_parse_external_references_header():
             "",
         ]
     )
-    items = parse(raw)
+    items = parse_items(raw)
     parsed_raw = deserialize_content(items)
     assert raw == parsed_raw
 
@@ -134,7 +134,7 @@ def test_parse_external_references():
             "",
         )
     )
-    items = parse(raw)
+    items = parse_items(raw)
     parsed_raw = deserialize_content(items)
     assert raw == parsed_raw
 
@@ -186,7 +186,7 @@ def test_parse_wip_document_with_titles():
             "",
         )
     )
-    items = parse(raw)
+    items = parse_items(raw)
     parsed_raw = deserialize_content(items)
     assert raw == parsed_raw
 

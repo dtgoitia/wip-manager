@@ -1,5 +1,6 @@
 import click
 
+from src.cli.clean import archive_completed_tasks
 from src.cli.validate import validate_wip_file
 from src.config import get_config
 
@@ -7,6 +8,14 @@ from src.config import get_config
 @click.group()
 def wip_group():
     ...
+
+
+@wip_group.command(name="clean", help="Move completed tasks to the archive")
+def clean_cmd() -> None:
+    config = get_config()
+    default_wip_path = config.wip_path
+    default_archive_path = config.archive_path
+    archive_completed_tasks(path=default_wip_path, archive_path=default_archive_path)
 
 
 @wip_group.command(name="validate", help="Validate WIP file")

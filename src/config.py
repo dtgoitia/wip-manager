@@ -9,14 +9,14 @@ DEFAULT_CONFIG_PATH = Path("~/.config/wip-manager/config.json").expanduser()
 @dataclass
 class Config:
     wip_path: Path
-    completed_path: Path
+    archive_path: Path
 
 
 def get_config() -> Config:
     content = read_json(path=DEFAULT_CONFIG_PATH)
     config = Config(
         wip_path=parse_path(content["wip_path"]),
-        completed_path=parse_path(content["completed_path"]),
+        archive_path=parse_path(content["archive_path"]),
     )
     return config
 
