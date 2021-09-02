@@ -6,6 +6,7 @@ black==21.8b0
     # via -r dev-requirements.in
 click==8.0.1
     # via
+    #   -r requirements.in
     #   black
     #   pip-tools
 decorator==5.0.9
