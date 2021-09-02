@@ -7,12 +7,13 @@ from typing import Any, Dict, Iterable, List, Optional, Union, cast
 MarkdownStr = str
 TaskTag = str
 JsonDict = Dict[str, Any]
+GroupName = str
 
 INCOMPLETE_TASK_PREFIX = "- [ ] "
 COMPLETED_TASK_PREFIX = "- [x] "
 DETAIL_PREFIX = "  - "
 _NO_DETAILS: List[TaskDetail] = []
-TASK_TAG_PATTERN = re.compile(r"\s#([a-z]:[a-z0-9-_,]*)\s?")  # `#g:group1_b`
+TASK_TAG_PATTERN = re.compile(r"\s#([a-z]:[a-z0-9-_,]*)")  # `#g:group1_b`
 LINE_IS_TASK_PATTERN = re.compile(r"^- \[")  # starts with `- [ ] ` or `- [x] `
 LINE_IS_DETAIL_PATTERN = re.compile(r"^  - ")  # starts with `  - `
 LINE_IS_EXTERNAL_REFERENCE_PATTERN = re.compile(r'\[([0-9]+)\]: ([^\s]+)\s"(.*)"$')
@@ -239,7 +240,7 @@ def parse_task(raw_line: MarkdownStr) -> Task:
         )
 
     # Handle task tags
-    tags = TASK_TAG_PATTERN.findall(description)
+    tags: List[TaskTag] = TASK_TAG_PATTERN.findall(description)
 
     if tags:
         # Remove tags from description

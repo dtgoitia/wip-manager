@@ -70,15 +70,10 @@ def test_parse_a_detail_with_hyphen():
     assert detail == TaskDetail(description="line with details - and a hyphen")
 
 
-def test_parse_a_single_uncompleted_task_with_tags():
-    raw: MarkdownStr = "- [ ] Do foo  #g:group1"
+def test_parse_a_task_with_tags():
+    raw: MarkdownStr = "- [ ] Do foo  #g:group1 #p:urgent"
     task = parse_task(raw)
-    assert task == Task(
-        description="Do foo",  # do not show tags in the description
-        done=False,
-        details=[],
-        tags=["g:group1"],
-    )
+    assert task.tags == ["g:group1", "p:urgent"]
 
 
 def test_parse_multiple_tasks():
