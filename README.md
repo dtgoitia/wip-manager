@@ -1,21 +1,47 @@
-Developed with Python 3.9.6
+## Set up
 
-## Configuration
+Developed and tested with Python 3.9.6.
 
-At `~/.config/wip-manager/config.json`:
+* Install:
 
-```json
-{
-  "wip_path": "~/path/to/my/wip/file.md",
-  "archive_path": "~/path/to/my/archive/file.md"
-}
-```
+  ```shell
+  git clone git@github.com:dtgoitia/wip-manager.git
+  cd wip-manager
+
+  # Create and activate Python virtual environment
+  python3 -m venv .venv
+  . .venv/bin/activate
+
+  # install repo dependencies locally
+  make install
+
+  # (optional) install repo under ~/.local/bin
+  scripts/install.sh
+  # NOTE: ensure ~/.local/bin is in your PATH
+  ```
+
+* Configuration (mandatory):
+
+  At `~/.config/wip-manager/config.json`:
+
+  ```json
+  {
+    "wip_path": "~/path/to/my/wip/file.md",
+    "archive_path": "~/path/to/my/archive/file.md"
+  }
+  ```
+
+* Uninstall:
+
+  ```shell
+  scripts/uninstall.sh
+  ```
 
 ## Usage:
 
 * Validate WIP file:
 
-  ```bash
+  ```shell
   python -m src.cli.cli validate
   ```
 
@@ -24,7 +50,7 @@ At `~/.config/wip-manager/config.json`:
 
 * Clean-up completed tasks:
 
-  ```bash
+  ```shell
   python -m src.cli.cli clean
   ```
 
