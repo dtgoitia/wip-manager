@@ -1,6 +1,7 @@
 import click
 
 from src.cli.clean import archive_completed_tasks
+from src.cli.hash import add_hashes_to_tasks
 from src.cli.validate import validate_wip_file
 from src.config import get_config
 
@@ -29,6 +30,13 @@ def validate_cmd(debug: bool) -> None:
     config = get_config()
     default_wip_path = config.wip_path
     validate_wip_file(path=default_wip_path, debug=debug)
+
+
+@wip_group.command(name="hash", help="Add hashes to all tasks without a hash")
+def hash_cmd() -> None:
+    config = get_config()
+    default_wip_path = config.wip_path
+    add_hashes_to_tasks(path=default_wip_path)
 
 
 if __name__ == "__main__":

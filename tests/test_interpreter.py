@@ -6,6 +6,7 @@ from src.interpreter import (
     EmptyLineToken,
     ExternalReferencesHeaderToken,
     ExternalReferenceToken,
+    HashToken,
     IncompleteSymbol,
     Indentation,
     Tag,
@@ -69,6 +70,26 @@ from src.types import ExternalReference, MarkdownStr, TaskDetail, Title
                 TagToken(token="p:urgent"),
             ],
             id="incompleted_task_with_many_tags",
+        ),
+        pytest.param(
+            "- [ ] Foo  #98a8be",
+            [
+                IncompleteSymbol(),
+                Text(text="Foo"),
+                HashToken(hash="98a8be"),
+            ],
+            id="task_with_hash",
+        ),
+        pytest.param(
+            "- [ ] Foo  #g:g1 #g:g2 #98a8be",
+            [
+                IncompleteSymbol(),
+                Text(text="Foo"),
+                TagToken(token="g:g1"),
+                TagToken(token="g:g2"),
+                HashToken(hash="98a8be"),
+            ],
+            id="incompleted_task_with_hash_and_many_tags",
         ),
         pytest.param(
             "  - Detail of task",
@@ -182,6 +203,7 @@ def test_is_empty_line(token_types, expected):
         pytest.param({IncompleteSymbol, Text}, True, id="incomplete_task"),
         pytest.param({CompletedSymbol, Text}, True, id="completed_task"),
         pytest.param({IncompleteSymbol, Text, TagToken}, True, id="task_with_tags"),
+        pytest.param({IncompleteSymbol, Text, HashToken}, True, id="task_with_hash"),
         pytest.param({Indentation, IncompleteSymbol, Text}, False, id="wrong_task"),
     ),
 )
@@ -391,7 +413,7 @@ def test_parse_wip_document_with_titles():
             "",
             "## Backlog",
             "",
-            "- [ ] Future task",
+            "- [ ] Future task  #345def",
             "",
             "<!-- External references -->",
             "",

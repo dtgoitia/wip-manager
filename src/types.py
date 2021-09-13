@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
+
+from src.hash import Hash
 
 MarkdownStr = str
 JsonDict = Dict[str, Any]
@@ -32,17 +34,25 @@ class Task:
     done: bool
     details: List[TaskDetail]
     tags: List[Tag]  # you need to preserve order, no sets
+    hash: Optional[Hash] = None
 
     def add_detail(self, task_detail: TaskDetail) -> Task:
         return replace(self, details=[*self.details, task_detail])
 
     def to_str(self) -> str:
-        tags = " ".join((tag.to_str() for tag in self.tags))
         task_prefix = COMPLETED_TASK_PREFIX if self.done else INCOMPLETE_TASK_PREFIX
-        if tags:
-            task = f"{task_prefix}{self.description}  {tags}"
-        else:
-            task = f"{task_prefix}{self.description}"
+        task = f"{task_prefix}{self.description}"
+
+        suffixes: List[str] = []
+        for tag in self.tags:
+            suffixes.append(tag.to_str())
+
+        if self.hash:
+            suffixes.append(f"#{self.hash}")
+
+        if suffixes:
+            formatted_suffixes = " ".join(suffixes)
+            task += f"  {formatted_suffixes}"
 
         lines = [
             task,

@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterable, Iterator, List, Optional, Set, Union, cast
 
+from src.hash import Hash
 from src.types import (
     EmptyLine,
     ExternalReference,
@@ -47,6 +48,11 @@ class TagToken:
     # Don't make "type" an enum, because it will cause you problems to add new tags via
     # config, or parse unknown tags
     token: str
+
+
+@dataclass
+class HashToken:
+    hash: str
 
 
 @dataclass
@@ -97,6 +103,7 @@ Token = Union[
     TitleToken,
     ExternalReferenceToken,
     ExternalReferencesHeaderToken,
+    HashToken,
 ]
 
 
@@ -110,6 +117,7 @@ HAS_INCOMPLETE_PREFIX = re.compile(r"^(- \[\s\]\s)")  # starts with `- [ ] `
 INDENTATION_PATTERN = re.compile(r"^(\s*)")  # spaces
 HAS_BULLET_POINT_PREFIX = re.compile(r"^-\s")
 HAS_TAGS = re.compile(r"\s#([a-z]:[a-z0-9-_,]*)")  # `#g:group1_b`
+HAS_HASH = re.compile(r"\s#([a-z0-9]{6})$")  # `#34ja9i`
 EXTERNAL_REFERENCE_PATTERN = re.compile(r'^\[([0-9]+)\]: ([^\s]+)\s"(.*)"$')
 
 
@@ -160,23 +168,35 @@ def tokenize_line(original_line: str) -> List[Token]:
         tokens.append(BulletPointPrefix())
         line = line.replace("- ", "", 1)
 
+    # Tokenize hash
+    hash_token: Optional[HashToken] = None
+    if matches := HAS_HASH.search(line):
+        hash_str = matches.group(1)
+        hash_token = HashToken(hash=hash_str)
+        line = line.replace(f" #{hash_str}", "", 1)
+
     # Tokenize tag
     tag_tokens: List[TagToken] = []
     if raw_tags := HAS_TAGS.findall(line):
         for raw_tag in raw_tags:
             tag_tokens.append(TagToken(token=raw_tag))
             line = line.replace(f" #{raw_tag}", "", 1)
-    if tag_tokens:
-        # remove double space between the text and the tags
+
+    if tag_tokens or hash_token:
+        # remove double space between the text and the tags/hash
         line = line.rstrip(" ")
 
     # Tokenize text
     if line:
         tokens.append(Text(text=line))
 
-    # Add tags at the end of the tokens
+    # Add tags after text
     if tag_tokens:
         tokens.extend(tag_tokens)
+
+    # Add hash at the end
+    if hash_token:
+        tokens.append(hash_token)
 
     return tokens
 
@@ -290,6 +310,10 @@ def is_task(token_types: Set) -> bool:
     if TagToken in token_types:
         remaining_tokens = remaining_tokens - {TagToken}
 
+    # Can have hash
+    if HashToken in token_types:
+        remaining_tokens = remaining_tokens - {HashToken}
+
     if remaining_tokens:
         return False
 
@@ -322,11 +346,14 @@ def parse_task(line: TokenizedLine) -> Task:
 
     tag_tokens = [token for token in line.tokens if isinstance(token, TagToken)]
 
+    hash_tokens = [token for token in line.tokens if isinstance(token, HashToken)]
+
     return Task(
         done=prefix == CompletedSymbol(),
         description=cast(Text, line.tokens[1]).text,
         tags=[parse_tag_token(token) for token in tag_tokens],
         details=[],
+        hash=Hash(hash_tokens[0].hash) if hash_tokens else None,
     )
 
 
