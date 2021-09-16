@@ -1,0 +1,2 @@
+- [x] Stuff done from the past
+- [x] This is a completed task [here][1]  #g:group1
