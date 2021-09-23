@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, replace
 from typing import Any, Dict, List, Optional, Union
@@ -35,6 +36,7 @@ class Task:
     details: List[TaskDetail]
     tags: List[Tag]  # you need to preserve order, no sets
     hash: Optional[Hash] = None
+    deadline: Optional[datetime.date] = None
 
     def add_detail(self, task_detail: TaskDetail) -> Task:
         return replace(self, details=[*self.details, task_detail])

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass
 from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
@@ -468,12 +469,21 @@ def parse_task(line: TokenizedLine) -> Task:
         else:
             raise NotImplementedError(f"Unexpected token while parsing a task: {token}")
 
+    tags = [parse_tag_token(token) for token in tag_tokens]
+    deadline_tags = list(tag for tag in tags if tag.type == "d")
+
+    deadline: Optional[datetime.date] = None
+    if deadline_tags:
+        raw_deadline = deadline_tags[0].value
+        deadline = datetime.date.fromisoformat(raw_deadline)
+
     task = Task(
         done=prefix == CompletedSymbol(),
         description="".join((token.to_str() for token in description_tokens)),
-        tags=[parse_tag_token(token) for token in tag_tokens],
+        tags=tags,
         details=[],
         hash=hash_token if hash_token else None,
+        deadline=deadline,
     )
     return task
 

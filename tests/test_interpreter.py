@@ -1,3 +1,4 @@
+import datetime
 from typing import List, Tuple
 
 import pytest
@@ -575,6 +576,14 @@ def test_parse_task_detail_with_escaped_text():
     items = parse_document(raw)
     parsed_raw = items_to_markdown(items)
     assert raw == parsed_raw
+
+
+def test_task_with_deadline():
+    raw: MarkdownStr = "- [ ] Task  #d:2021-09-23"
+    items = parse_document(raw)
+    task = items[0]
+    assert isinstance(task, Task)
+    assert task.deadline == datetime.date(2021, 9, 23)
 
 
 @pytest.mark.skip(reason="TODO")
