@@ -1,6 +1,7 @@
 import click
 
 from src.cli.clean import archive_completed_tasks
+from src.cli.deadlines import show_tasks_sorted_by_deadline
 from src.cli.hash import add_hashes_to_tasks
 from src.cli.validate import validate_wip_file
 from src.config import get_config
@@ -37,6 +38,13 @@ def hash_cmd() -> None:
     config = get_config()
     default_wip_path = config.wip_path
     add_hashes_to_tasks(path=default_wip_path)
+
+
+@wip_group.command(name="deadlines", help="Show tasks sorted by deadline")
+def deadlines_cmd() -> None:
+    config = get_config()
+    default_wip_path = config.wip_path
+    show_tasks_sorted_by_deadline(path=default_wip_path)
 
 
 if __name__ == "__main__":
