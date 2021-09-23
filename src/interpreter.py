@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable, Iterator, List, Optional, Set, Union, cast
+from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
 
 from src.hash import Hash
 from src.types import (
@@ -59,6 +59,17 @@ class HashToken:
 class Text:
     text: str
 
+    def to_str(self) -> str:
+        return self.text
+
+
+@dataclass
+class EscapedText:
+    text: str
+
+    def to_str(self) -> str:
+        return self.text
+
 
 @dataclass
 class Indentation:
@@ -97,6 +108,7 @@ Token = Union[
     CompletedSymbol,
     TagToken,
     Text,
+    EscapedText,
     Indentation,
     BulletPointPrefix,
     EmptyLineToken,
@@ -121,6 +133,75 @@ HAS_HASH = re.compile(r"\s#([a-z0-9]{6})$")  # `#34ja9i`
 EXTERNAL_REFERENCE_PATTERN = re.compile(r'^\[([0-9]+)\]: ([^\s]+)\s"(.*)"$')
 
 
+IsEscaped = bool
+
+
+def split_escaped(*, text: str) -> Iterator[Tuple[IsEscaped, str]]:
+    """Yield chunks of text indicating if they are escaped or not.
+
+    The order is preserved. The string "hi `foo` bar" will yield:
+    ("hi `", False)
+    ("foo", True)
+    ("` bar", False)
+
+    where the second member of the tuple is True if the text is escaped.
+
+    Results should always contain
+    """
+    if not text:
+        yield (False, "")
+        return
+
+    is_escaped_text = False
+    # Problem, when one of the backticks is not closed, the last chunk should not
+    # contain one the last backtick as an regular (non-escaped) character
+    BACKTICK = "`"
+    backtick_amount = sum((1 for character in text if character == BACKTICK))
+    all_backticks_are_closed = backtick_amount % 2 == 0
+
+    buffer: str = ""
+
+    def reset_buffer() -> None:
+        nonlocal buffer
+        buffer = ""
+
+    def append_to_buffer(character: str) -> None:
+        nonlocal buffer
+        buffer += character
+
+    def toggle_escaped_state() -> None:
+        nonlocal is_escaped_text
+        is_escaped_text = not is_escaped_text
+
+    backticks_found_so_far = 0
+    for character in text:
+        if character == BACKTICK:
+            backticks_found_so_far += 1
+            if (
+                not all_backticks_are_closed
+                and backticks_found_so_far == backtick_amount
+            ):
+                assert is_escaped_text is False
+                append_to_buffer(character)
+                # do not yield! you've just buffered the last not closed backtick, just
+                # carry on checking characters as usual
+                continue
+
+            if is_escaped_text is True:  # buffer contains escaped text
+                yield (is_escaped_text, buffer)
+                reset_buffer()
+                append_to_buffer(character)
+            else:  # buffer contains non-escaped text
+                append_to_buffer(character)
+                yield (is_escaped_text, buffer)
+                reset_buffer()
+            toggle_escaped_state()
+        else:
+            append_to_buffer(character)
+
+    yield (is_escaped_text, buffer)
+
+
 def tokenize_line(original_line: str) -> List[Token]:
     tokens: List[Token] = []
 
@@ -130,14 +211,35 @@ def tokenize_line(original_line: str) -> List[Token]:
     if not line:
         return [EmptyLineToken()]
 
+    for is_escaped, text in split_escaped(text=line):
+        if is_escaped:
+            tokens.append(EscapedText(text=text))
+        else:
+            non_escaped_tokens = tokenize_escaped_text(text)
+            tokens.extend(non_escaped_tokens)
+
+    return tokens
+
+
+def tokenize_escaped_text(original_text: str) -> List[Token]:
+    """Tokenize text chunk that contains nothing that requires escaping.
+
+    File lines must be first processed to remove the parts within the lines that must be
+    escaped. Only after being escaped, the remaining lines or pieces of line (aka
+    "chunk") can be tokenized using the current function.
+    """
+    tokens: List[Token] = []
+
+    text = original_text
+
     # Tokenize H2 title
-    if line.startswith("##"):
-        title = line.replace("## ", "", 1)
+    if text.startswith("##"):
+        title = text.replace("## ", "", 1)
         token = TitleToken(title=title)
         return [token]
 
     # Tokenize external reference
-    if matches := EXTERNAL_REFERENCE_PATTERN.match(line):
+    if matches := EXTERNAL_REFERENCE_PATTERN.match(text):
         return [
             ExternalReferenceToken(
                 number=int(matches.group(1)),
@@ -147,48 +249,48 @@ def tokenize_line(original_line: str) -> List[Token]:
         ]
 
     # Tokenize external references header
-    if line == "<!-- External references -->":
+    if text == "<!-- External references -->":
         return [ExternalReferencesHeaderToken()]
 
     # Tokenize indentation
-    if line.startswith(" "):
-        indentation = INDENTATION_PATTERN.match(line).group(1)  # type:ignore
+    if text.startswith(" "):
+        indentation = INDENTATION_PATTERN.match(text).group(1)  # type:ignore
         space_amount = len(indentation)
         tokens.append(Indentation(spaces=space_amount))
-        line = line.replace(indentation, "", 1)
+        text = text.replace(indentation, "", 1)
 
     # Tokenize done/todo prefix
-    if HAS_DONE_PREFIX.match(line):
+    if HAS_DONE_PREFIX.match(text):
         tokens.append(CompletedSymbol())
-        line = line.replace("- [x] ", "", 1)
-    elif HAS_INCOMPLETE_PREFIX.match(line):
+        text = text.replace("- [x] ", "", 1)
+    elif HAS_INCOMPLETE_PREFIX.match(text):
         tokens.append(IncompleteSymbol())
-        line = line.replace("- [ ] ", "", 1)
-    elif HAS_BULLET_POINT_PREFIX.match(line):
+        text = text.replace("- [ ] ", "", 1)
+    elif HAS_BULLET_POINT_PREFIX.match(text):
         tokens.append(BulletPointPrefix())
-        line = line.replace("- ", "", 1)
+        text = text.replace("- ", "", 1)
 
     # Tokenize hash
     hash_token: Optional[HashToken] = None
-    if matches := HAS_HASH.search(line):
+    if matches := HAS_HASH.search(text):
         hash_str = matches.group(1)
         hash_token = HashToken(hash=hash_str)
-        line = line.replace(f" #{hash_str}", "", 1)
+        text = text.replace(f" #{hash_str}", "", 1)
 
     # Tokenize tag
     tag_tokens: List[TagToken] = []
-    if raw_tags := HAS_TAGS.findall(line):
+    if raw_tags := HAS_TAGS.findall(text):
         for raw_tag in raw_tags:
             tag_tokens.append(TagToken(token=raw_tag))
-            line = line.replace(f" #{raw_tag}", "", 1)
+            text = text.replace(f" #{raw_tag}", "", 1)
 
     if tag_tokens or hash_token:
         # remove double space between the text and the tags/hash
-        line = line.rstrip(" ")
+        text = text.rstrip(" ")
 
     # Tokenize text
-    if line:
-        tokens.append(Text(text=line))
+    if text:
+        tokens.append(Text(text=text))
 
     # Add tags after text
     if tag_tokens:
@@ -234,6 +336,7 @@ def analyse_lexically(document: Iterator[TokenizedLine]) -> List[Item]:
             if buffer:
                 parsed_items.append(cast(Item, buffer))
             buffer = task
+            continue
 
         if is_detail(token_types):
             detail = parse_task_detail(line)
@@ -273,7 +376,7 @@ def analyse_lexically(document: Iterator[TokenizedLine]) -> List[Item]:
             continue
 
         if is_title(token_types):
-            assert not buffer, "I didn't expect to have anyhting bufered at this point"
+            assert not buffer, "I didn't expect to have anything buffered at this point"
 
             title = parse_title(line)
             parsed_items.append(title)
@@ -300,19 +403,14 @@ def is_task(token_types: Set) -> bool:
     else:
         return False
 
-    # Must have completed/incomplete prefix
+    # Must have completed or incomplete prefix
     if IncompleteSymbol in token_types or CompletedSymbol in token_types:
         remaining_tokens = remaining_tokens - {IncompleteSymbol, CompletedSymbol}
     else:
         return False
 
-    # Can have tags
-    if TagToken in token_types:
-        remaining_tokens = remaining_tokens - {TagToken}
-
-    # Can have hash
-    if HashToken in token_types:
-        remaining_tokens = remaining_tokens - {HashToken}
+    optional_tokens = {TagToken, HashToken, EscapedText}
+    remaining_tokens = remaining_tokens - optional_tokens
 
     if remaining_tokens:
         return False
@@ -321,7 +419,18 @@ def is_task(token_types: Set) -> bool:
 
 
 def is_detail(token_types: Set) -> bool:
-    return {Indentation, BulletPointPrefix, Text} == token_types
+    mandatory_tokens = {Indentation, BulletPointPrefix, Text}
+    optional_tokens = {EscapedText}
+
+    if token_types < mandatory_tokens:
+        # at least one mandatory token is missing
+        return False
+
+    unexpected_tokens = token_types - mandatory_tokens - optional_tokens
+    if unexpected_tokens:
+        return False
+
+    return True
 
 
 def is_external_references_header(token_types: Set) -> bool:
@@ -342,27 +451,53 @@ def parse_tag_token(tag: TagToken) -> Tag:
 
 
 def parse_task(line: TokenizedLine) -> Task:
-    prefix = line.tokens[0]
+    # Hash and tags must be always at the end of the line
+    prefix, *after_prefix = line.tokens
 
-    tag_tokens = [token for token in line.tokens if isinstance(token, TagToken)]
+    description_tokens = []
+    tag_tokens = []
+    hash_token = None
+    for token in after_prefix:
+        if isinstance(token, (Text, EscapedText)):
+            description_tokens.append(token)
+        elif isinstance(token, TagToken):
+            tag_tokens.append(token)
+        elif isinstance(token, HashToken):
+            assert hash_token is None, "A task must only have one hash"
+            hash_token = Hash(token.hash)
+        else:
+            raise NotImplementedError(f"Unexpected token while parsing a task: {token}")
 
-    hash_tokens = [token for token in line.tokens if isinstance(token, HashToken)]
-
-    return Task(
+    task = Task(
         done=prefix == CompletedSymbol(),
-        description=cast(Text, line.tokens[1]).text,
+        description="".join((token.to_str() for token in description_tokens)),
         tags=[parse_tag_token(token) for token in tag_tokens],
         details=[],
-        hash=Hash(hash_tokens[0].hash) if hash_tokens else None,
+        hash=hash_token if hash_token else None,
     )
+    return task
 
 
 def parse_task_detail(line: TokenizedLine) -> TaskDetail:
-    indentation = next(token for token in line.tokens if isinstance(token, Indentation))
-    assert indentation.spaces == 2, "Only a 2 space indentation is supported"
+    indentation = None
+    description_tokens = []
+    for token in line.tokens:
+        if isinstance(token, Indentation):
+            indentation = token
+            assert indentation.spaces == 2, "Only a 2 space indentation is supported"
+        elif isinstance(token, BulletPointPrefix):
+            continue
+        elif isinstance(token, (Text, EscapedText)):
+            description_tokens.append(token)
+        else:
+            raise NotImplementedError(
+                f"Unexpected token while parsing a task detail line: line={line!r}"
+                f" token={token}"
+            )
 
-    text = next(token for token in line.tokens if isinstance(token, Text))
-    task_detail = TaskDetail(description=text.text)
+    task_detail = TaskDetail(
+        description="".join((token.to_str() for token in description_tokens)),
+    )
     return task_detail
 
 

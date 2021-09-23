@@ -1,14 +1,20 @@
+from typing import List, Tuple
+
 import pytest
 
 from src.interpreter import (
+    HAS_HASH,
+    HAS_TAGS,
     BulletPointPrefix,
     CompletedSymbol,
     EmptyLineToken,
+    EscapedText,
     ExternalReferencesHeaderToken,
     ExternalReferenceToken,
     HashToken,
     IncompleteSymbol,
     Indentation,
+    IsEscaped,
     Tag,
     TagToken,
     Task,
@@ -27,10 +33,79 @@ from src.interpreter import (
     parse_tag_token,
     parse_task_detail,
     parse_title,
+    split_escaped,
     tokenize_document,
     tokenize_line,
 )
 from src.types import ExternalReference, MarkdownStr, TaskDetail, Title
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    (
+        pytest.param(
+            "`a` b c",
+            [(False, "`"), (True, "a"), (False, "` b c")],
+            id="start_escaped",
+        ),
+        pytest.param(
+            "a `b` c",
+            [(False, "a `"), (True, "b"), (False, "` c")],
+            id="middle_escaped",
+        ),
+        pytest.param(
+            "a b `c`",
+            [(False, "a b `"), (True, "c"), (False, "`")],
+            id="end_escaped",
+        ),
+        pytest.param("a b c", [(False, "a b c")], id="nothing_escaped"),
+        pytest.param(
+            "`ab`",
+            [(False, "`"), (True, "ab"), (False, "`")],
+            id="all_escaped",
+        ),
+        pytest.param("", [(False, "")], id="empty_line"),
+        pytest.param("``", [(False, "`"), (True, ""), (False, "`")], id="2_backticks"),
+        pytest.param("`", [(False, "`")], id="1_backtick"),
+        pytest.param("a`b", [(False, "a`b")], id="standalone_backtick_does_not_escape"),
+    ),
+)
+def test_split_escaped_text(text: str, expected: List[Tuple[IsEscaped, str]]) -> None:
+    result = list(split_escaped(text=text))
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "has_hash"),
+    (
+        pytest.param("foo  #000000", True, id="all_numbers"),
+        pytest.param("foo  #aaaaaa", True, id="all_letters"),
+        pytest.param("foo  #000aaa", True, id="numbers_and_letters"),
+        pytest.param("foo `#000000`", False, id="escaped_hash"),
+        pytest.param("foo `#000000`  #g:foo3", False, id="escaped_hash_and_tag"),
+        # The hash must be at the end of the line, because it's the less human readable
+        # bit in a task, so it should be moved as far away from human-meaningful area:
+        # beginning of the line
+        pytest.param("foo #000000 bar", False, id="hash_must_be_at_the_end"),
+    ),
+)
+def test_has_hash(text: str, has_hash: bool) -> None:
+    result = HAS_HASH.search(text)
+    assert bool(result) is has_hash
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_tags"),
+    (
+        pytest.param("foo  #g:g1", ["g:g1"], id="one_tag"),
+        pytest.param("foo  #g:g1 #g:g2", ["g:g1", "g:g2"], id="two_tags"),
+        pytest.param("foo #g:g1", ["g:g1"], id="tag_with_only_one_whitespace_before"),
+        pytest.param("foo#g:g1", [], id="tags_must_have_whitespace_before"),
+    ),
+)
+def test_has_tag(text: str, expected_tags: List[str]) -> None:
+    found_tags = HAS_TAGS.findall(text)
+    assert found_tags == expected_tags
 
 
 @pytest.mark.parametrize(
@@ -72,6 +147,30 @@ from src.types import ExternalReference, MarkdownStr, TaskDetail, Title
             id="incompleted_task_with_many_tags",
         ),
         pytest.param(
+            "- [ ] Foo  `#g:g1` bar  #g:g2 #p:urgent",
+            [
+                IncompleteSymbol(),
+                Text(text="Foo  `"),
+                EscapedText(text="#g:g1"),
+                Text(text="` bar"),
+                TagToken(token="g:g2"),
+                TagToken(token="p:urgent"),
+            ],
+            id="task_escape_if_between_backtics",
+        ),
+        pytest.param(
+            "- [ ] Foo `#g:g1`  #g:g2 #p:urgent",
+            [
+                IncompleteSymbol(),
+                Text(text="Foo `"),
+                EscapedText(text="#g:g1"),
+                Text(text="`"),
+                TagToken(token="g:g2"),
+                TagToken(token="p:urgent"),
+            ],
+            id="task_escape_if_between_backtics_at_the_end_of_line_text",
+        ),
+        pytest.param(
             "- [ ] Foo  #98a8be",
             [
                 IncompleteSymbol(),
@@ -109,6 +208,28 @@ from src.types import ExternalReference, MarkdownStr, TaskDetail, Title
             ],
             id="task_detail_with_hyphen",
         ),
+        pytest.param(
+            "  - Detail of `tag symbol: #g:g1` foo",
+            [
+                Indentation(spaces=2),
+                BulletPointPrefix(),
+                Text(text="Detail of `"),
+                EscapedText(text="tag symbol: #g:g1"),
+                Text(text="` foo"),
+            ],
+            id="task_detail_escape_if_between_backtics",
+        ),
+        pytest.param(
+            "  - Detail of `tag symbol: #g:g1`",
+            [
+                Indentation(spaces=2),
+                BulletPointPrefix(),
+                Text(text="Detail of `"),
+                EscapedText(text="tag symbol: #g:g1"),
+                Text(text="`"),
+            ],
+            id="task_detail_escape_if_between_backtics_at_the_end_of_line_text",
+        ),
         pytest.param("", [EmptyLineToken()], id="empty_line"),
         pytest.param("## Bar", [TitleToken(title="Bar")], id="title"),
         pytest.param(
@@ -126,6 +247,17 @@ from src.types import ExternalReference, MarkdownStr, TaskDetail, Title
             "<!-- External references -->",
             [ExternalReferencesHeaderToken()],
             id="external_references_header",
+        ),
+        pytest.param(
+            "- [ ] Escaped task `- [ ] Foo  #d:2021-09-18`  #g:g1",
+            [
+                IncompleteSymbol(),
+                Text(text="Escaped task `"),
+                EscapedText(text="- [ ] Foo  #d:2021-09-18"),
+                Text(text="`"),
+                TagToken(token="g:g1"),
+            ],
+            id="escaped_task_and_tags_within_task_with_tags",
         ),
     ),
 )
@@ -419,6 +551,25 @@ def test_parse_wip_document_with_titles():
             "",
             '[1]: https://example.com "Example page"',
             "",
+        )
+    )
+    items = parse_document(raw)
+    parsed_raw = items_to_markdown(items)
+    assert raw == parsed_raw
+
+
+def test_parse_task_with_escaped_text():
+    raw: MarkdownStr = "- [ ] Escaped task `- [ ] Foo  #d:2021-09-18`  #g:g1"
+    items = parse_document(raw)
+    parsed_raw = items_to_markdown(items)
+    assert raw == parsed_raw
+
+
+def test_parse_task_detail_with_escaped_text():
+    raw: MarkdownStr = "\n".join(
+        (
+            "- [ ] Parent task",
+            "  - Detail of `tag symbol: #g:g1` foo",
         )
     )
     items = parse_document(raw)
