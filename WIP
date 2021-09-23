@@ -1,0 +1,10 @@
+In the `wipman clean` command, you are checking if there are any still to-do tasks before cleaning them out.
+
+- [x] Build graph of task interdependencies
+- [x] Traverse graph finding previous tasks
+- [x] Check if previous tasks are incomplete
+- [ ] Decide if to raise with the first one, or collect all issues
+  - probably easier to raise with the first one, fail early
+  - trying to collect many can lead you to very complex scenarios to handle before reporting
+  - just fail with enough information on the first issue found, and done
+  - you will have time to implement a more complex checking system

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Tuple
 
+from src.interdependency import assert_completed_tasks_have_no_pending_prior_task
 from src.interpreter import items_to_markdown, parse_document
 from src.io import append_to_archive, read_markdown_file, write_text_file
 from src.types import Item, MarkdownStr, Task
@@ -11,6 +12,8 @@ def archive_completed_tasks(*, path: Path, archive_path: Path) -> None:
     original_content = read_markdown_file(path=path)
     items = parse_document(original_content)
     completed_items, remaining_items = separate_completed_items(items)
+    assert_completed_tasks_have_no_pending_prior_task(items)
+    exit()
 
     # Update task archive
     archived_tasks_as_str = serialize_completed_tasks(completed_tasks=completed_items)
