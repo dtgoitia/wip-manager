@@ -89,3 +89,64 @@ def test_graph_raises_if_child_is_missing_when_adding_a_parent():
     exc = e.value
 
     assert exc.args == ("Node #missing not in graph, cannot receive a parent node",)
+
+
+def test_get_node_parents():
+    first = Node(id=NodeId("first_node"))
+    graph = Graph(first_node=first)
+    missing = Node(id=NodeId("missing"))
+
+    with pytest.raises(GraphError) as e:
+        graph.get_node_parents(node=missing)
+
+    exc = e.value
+
+    assert exc.args == ("Node #missing not in graph",)
+
+
+@pytest.mark.skip(reason="TODO")
+def test_raise_if_node_missing_when_getting_node_parents():
+    first = Node(id=NodeId("first_node"))
+    graph = Graph(first_node=first)
+    parent = Node(id=NodeId("parent"))
+    graph.add_parent(parent=parent, child=first)
+
+
+@pytest.mark.skip(reason="TODO")
+def test_raise_if_node_missing_when_getting_node_children():
+    ...
+
+
+def test_get_every_ancestor_of_a_node():
+    first = Node(id=NodeId("first_node"))
+    graph = Graph(first_node=first)
+    parent = Node(id=NodeId("parent"))
+    grandpa = Node(id=NodeId("grandpa"))
+    graph.add_parent(parent=parent, child=first)
+    graph.add_parent(parent=grandpa, child=parent)
+
+    parents = graph.get_all_parents(of_node=first)
+    assert parents == {parent, grandpa}
+
+
+# def test_graph_remove_node():
+#     first = Node(id=NodeId("first_node"))
+#     graph = Graph(first_node=first)
+#     parent = Node(id=NodeId("parent"))
+#     graph.add_parent(parent=parent, child=first)
+#     assert graph.nodes == {first.id: first, parent.id: parent}
+
+#     graph.remove_node(id=node.id)
+#     assert graph.nodes == {first.id: first, parent.id: parent}
+#     parents = graph.get_node_parents(id=node.id)
+#     assert parents == {}  # TODO
+#     ...
+
+
+def test_raise_if_removing_a_node_with_at_least_a_parent_and_a_child():
+    """Rationale: a node that has both a parent and a child might be the last link
+    between two parts of a graph. Removing this node can disconnect the graph.
+
+    TODO: Is this really undesired?
+    """
+    ...

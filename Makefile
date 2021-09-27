@@ -26,6 +26,9 @@ lint:
 	isort --check --diff .
 	python -m mypy --config-file setup.cfg --pretty .
 
+typecheck:
+	python -m mypy --config-file setup.cfg --pretty .
+
 format:
 	isort .
 	black .

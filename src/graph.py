@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, NewType, Protocol
+from typing import Dict, FrozenSet, List, NewType, Protocol, Set
+
+import attr
 
 NodeId = NewType("NodeId", str)
 
@@ -8,7 +9,7 @@ class NodeLike(Protocol):
     id: NodeId
 
 
-@dataclass
+@attr.s(auto_attribs=True, frozen=True, hash=True)
 class Node:
     id: NodeId
 
@@ -72,3 +73,28 @@ class Graph:
             self.nodes[node.id] = node
             self.parents_per_node[node.id] = frozenset()
             self.children_per_node[node.id] = frozenset()
+
+    def get_node_parents(self, *, node: NodeLike) -> Set[NodeLike]:
+        if not self._is_node_in_graph(node):
+            error_msg = f"Node #{node.id} not in graph"
+            raise GraphError(error_msg)
+
+        nodes = {self.nodes[id] for id in self.parents_per_node[node.id]}
+
+        return nodes
+
+    def get_all_parents(self, *, of_node: NodeLike) -> Set[NodeLike]:
+        """Recursively traverse the whole graph and return every ancestor"""
+        ancestors = set()
+        for parent in self.get_node_parents(node=of_node):
+            ancestors.add(parent)
+            grand_parents = self.get_all_parents(of_node=parent)
+            ancestors.update(grand_parents)
+        return ancestors
+
+    def remove_node(self, *, node: NodeLike) -> None:
+        raise NotImplementedError("TODO: remove parent and child relationships")
+        if not self._is_node_in_graph(node):
+            error_msg = f"Node #{node.id} not in graph, cannot be removed"
+            raise GraphError(error_msg)
+        # del self.nodes[node.id]
