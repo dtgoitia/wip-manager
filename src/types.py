@@ -19,6 +19,7 @@ LINE_IS_TASK_PATTERN = re.compile(r"^- \[")  # starts with `- [ ] ` or `- [x] `
 LINE_IS_DETAIL_PATTERN = re.compile(r"^  - ")  # starts with `  - `
 LINE_IS_EXTERNAL_REFERENCE_PATTERN = re.compile(r'\[([0-9]+)\]: ([^\s]+)\s"(.*)"$')
 LINE_IS_TITLE_PATTERN = re.compile(r"^## (.*)$")
+GROUP_TAG_TYPE = "g"
 
 
 @dataclass
@@ -71,6 +72,9 @@ class Tag:
 
     def to_str(self) -> str:
         return f"#{self.type}:{self.value}"
+
+    def __hash__(self) -> int:
+        return hash(self.to_str())
 
 
 @dataclass
