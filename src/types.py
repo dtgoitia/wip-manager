@@ -9,7 +9,7 @@ from src.hash import Hash
 
 MarkdownStr = str
 JsonDict = Dict[str, Any]
-GroupName = str
+TagValue = str
 
 INCOMPLETE_TASK_PREFIX = "- [ ] "
 COMPLETED_TASK_PREFIX = "- [x] "
@@ -68,7 +68,7 @@ class Task:
 @dataclass
 class Tag:
     type: str  # g (group), p (priority), etc.
-    value: str
+    value: TagValue
 
     def to_str(self) -> str:
         return f"#{self.type}:{self.value}"
