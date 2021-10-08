@@ -6,7 +6,7 @@ from typing import Iterator, List
 from src.config import get_config, update_config
 from src.interpreter import parse_document
 from src.io import read_markdown_file
-from src.types import GROUP_TAG_TYPE, Tag, Task
+from src.types import GROUP_TAG_TYPE, Tag, TagValue, Task
 
 
 def scrape_tags(path: Path) -> Iterator[Tag]:
@@ -24,17 +24,8 @@ def scrape_group_tags(path: Path) -> Iterator[Tag]:
     yield from group_tags
 
 
-def print_tags(paths: List[Path]) -> None:
-    """Print a sorted list of all groups ('g') tags in WIP and archive."""
-    tags_per_file = (scrape_group_tags(path) for path in paths)
-    tags = set(tag for tag in itertools.chain.from_iterable(tags_per_file))
-    tag_values = (tag.value for tag in tags)
-    for tag in sorted(tag_values):
-        print(tag)
-
-
-def dump_tags(paths: List[Path]) -> None:
-    """Add tags in WIP and archive files to config."""
+def get_all_group_tags(paths: List[Path]) -> Iterator[TagValue]:
+    """Return group tag values in config and in WIP and archive files."""
     tags_per_file = (scrape_group_tags(path) for path in paths)
     tags_in_files = set(tag for tag in itertools.chain.from_iterable(tags_per_file))
 
@@ -44,7 +35,22 @@ def dump_tags(paths: List[Path]) -> None:
     tags = tags_in_config.union(tags_in_files)
 
     tag_values = (tag.value for tag in tags)
+    return tag_values
+
+
+def print_tags(paths: List[Path]) -> None:
+    """Print all groups tags to console."""
+    tag_values = get_all_group_tags(paths=paths)
+    for tag in sorted(tag_values):
+        print(tag)
+
+
+def dump_group_tags(paths: List[Path]) -> None:
+    """Add group tags in WIP and archive files to config."""
+    tag_values = get_all_group_tags(paths=paths)
     sorted_tag_values = list(sorted(tag_values))
 
+    config = get_config()
     updated_config = dataclasses.replace(config, tags=sorted_tag_values)
+
     update_config(config=updated_config)

@@ -3,7 +3,7 @@ import click
 from src.cli.clean import archive_completed_tasks
 from src.cli.deadlines import show_tasks_sorted_by_deadline
 from src.cli.hash import add_hashes_to_tasks
-from src.cli.scrape_tags import dump_tags, print_tags
+from src.cli.tags import dump_group_tags, print_tags
 from src.cli.validate import validate_wip_file
 from src.config import get_config
 
@@ -65,7 +65,7 @@ def dump_tags_cmd() -> None:
         config.wip_path,
         config.archive_path,
     ]
-    dump_tags(paths=paths)
+    dump_group_tags(paths=paths)
 
 
 if __name__ == "__main__":
