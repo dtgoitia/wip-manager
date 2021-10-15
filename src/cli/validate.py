@@ -19,13 +19,16 @@ def validate_wip_file(*, path: Path, debug: bool) -> None:
     original_lines = original_content.split("\n")
     parsed_lines = parsed_content.split("\n")
     differ = difflib.Differ()
-    diff = differ.compare(original_lines, parsed_lines)
+    raw_diff = differ.compare(original_lines, parsed_lines)
+    numbered_diff = ((i, line) for i, line in enumerate(raw_diff))
+    diff = [(i, line) for i, line in numbered_diff if not line.startswith("  ")]
 
-    diffs_found = False
-    for i, line in enumerate(diff):
-        if line.startswith("  "):
-            continue
-        diffs_found = True
+    diffs_found = bool(diff)
+
+    if diffs_found:
+        print("File is not valid, see below:\n")
+
+    for i, line in diff:
         print(i, line)
 
     if diffs_found:

@@ -2,6 +2,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import List
 
+from src.cli.validate import validate_wip_file
 from src.hash import create_new_hash
 from src.interpreter import items_to_markdown, parse_document
 from src.io import read_markdown_file
@@ -9,6 +10,10 @@ from src.types import Item, Task
 
 
 def add_hashes_to_tasks(*, path: Path) -> None:
+    print("Validating WIP file before adding hashes... ", end="")
+    validate_wip_file(path=path, debug=False)
+    print("all valid :)")
+
     original_content = read_markdown_file(path=path)
     items = parse_document(original_content)
 
