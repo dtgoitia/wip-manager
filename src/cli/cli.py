@@ -2,6 +2,7 @@ import click
 
 from src.cli.clean import archive_completed_tasks
 from src.cli.deadlines import show_tasks_sorted_by_deadline
+from src.cli.filter import GroupName, filter_wip_file
 from src.cli.hash import add_hashes_to_tasks
 from src.cli.tags import dump_group_tags, print_tags
 from src.cli.validate import validate_wip_file
@@ -19,6 +20,14 @@ def clean_cmd() -> None:
     default_wip_path = config.wip_path
     default_archive_path = config.archive_path
     archive_completed_tasks(path=default_wip_path, archive_path=default_archive_path)
+
+
+@wip_group.command(name="filter", help="Filter tasks in WIP file")
+@click.option("-g", "--group", "group_filter", help="Group name to filter by")
+def filter_cmd(group_filter: GroupName) -> None:
+    config = get_config()
+    default_wip_path = config.wip_path
+    filter_wip_file(path=default_wip_path, by_group=group_filter)
 
 
 @wip_group.command(name="validate", help="Validate WIP file")
