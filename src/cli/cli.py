@@ -3,7 +3,8 @@ import click
 from src.cli.clean import archive_completed_tasks
 from src.cli.deadlines import show_tasks_sorted_by_deadline
 from src.cli.filter import GroupName, filter_wip_file
-from src.cli.hash import add_hashes_to_tasks
+from src.cli.format import format
+from src.cli.hash import validate_and_add_hashes_to_tasks
 from src.cli.tags import dump_group_tags, print_tags
 from src.cli.validate import validate_wip_file
 from src.config import get_config
@@ -47,7 +48,7 @@ def validate_cmd(debug: bool) -> None:
 def hash_cmd() -> None:
     config = get_config()
     default_wip_path = config.wip_path
-    add_hashes_to_tasks(path=default_wip_path)
+    validate_and_add_hashes_to_tasks(path=default_wip_path)
 
 
 @wip_group.command(name="deadlines", help="Show tasks sorted by deadline")
@@ -75,6 +76,13 @@ def dump_tags_cmd() -> None:
         config.archive_path,
     ]
     dump_group_tags(paths=paths)
+
+
+@wip_group.command(name="format", help="Format WIP file")
+def format_cmd() -> None:
+    config = get_config()
+    default_wip_path = config.wip_path
+    format(path=default_wip_path)
 
 
 if __name__ == "__main__":

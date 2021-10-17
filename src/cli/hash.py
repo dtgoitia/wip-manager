@@ -10,10 +10,6 @@ from src.types import Item, Task
 
 
 def add_hashes_to_tasks(*, path: Path) -> None:
-    print("Validating WIP file before adding hashes... ", end="")
-    validate_wip_file(path=path, debug=False)
-    print("all valid :)")
-
     original_content = read_markdown_file(path=path)
     items = parse_document(original_content)
 
@@ -38,3 +34,11 @@ def add_hashes_to_tasks(*, path: Path) -> None:
     updated_content = items_to_markdown(updated_items)
 
     path.write_text(updated_content)
+
+
+def validate_and_add_hashes_to_tasks(*, path: Path) -> None:
+    print("Validating WIP file before adding hashes... ", end="")
+    validate_wip_file(path=path, debug=False)
+    print("all valid :)")
+
+    add_hashes_to_tasks(path=path)
