@@ -1,3 +1,9 @@
+install-dev-tools:
+	pre-commit install  # defaults to "pre-commit" stage
+
+uninstall-dev-tools:
+	pre-commit uninstall  # defaults to "pre-commit" stage
+
 compile_production_dependencies:
 	find ./requirements -type f -name "prod.txt" -delete
 	pip-compile requirements/prod.in \
@@ -24,7 +30,7 @@ lint:
 	flake8
 	black --check --diff .
 	isort --check --diff .
-	python -m mypy --config-file setup.cfg --pretty .
+	mypy --config-file setup.cfg --pretty .
 
 format:
 	isort .

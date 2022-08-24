@@ -4,5 +4,6 @@ ipdb
 isort
 mypy
 pip-tools
+pre-commit
 pudb
 pytest
