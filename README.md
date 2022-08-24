@@ -1,6 +1,6 @@
 ## Set up
 
-Developed and tested with Python 3.9.6.
+Developed and tested with Python 3.10.6.
 
 * Install:
 
@@ -12,8 +12,7 @@ Developed and tested with Python 3.9.6.
   python3 -m venv .venv
   . .venv/bin/activate
 
-  # install repo dependencies locally
-  make install
+  make install_development_dependencies
 
   # (optional) install repo under ~/.local/bin
   scripts/install.sh

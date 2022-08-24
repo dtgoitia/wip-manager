@@ -1,24 +1,24 @@
-requirements:
-	rm -f requirements.txt
-	pip-compile requirements.in \
-		--output-file requirements.txt \
+compile_production_dependencies:
+	find ./requirements -type f -name "prod.txt" -delete
+	pip-compile requirements/prod.in \
+		--output-file requirements/prod.txt \
 		--no-header \
 		--no-emit-index-url \
 		--verbose
 
-dev-requirements:
-	rm -f dev-requirements.txt
-	pip-compile requirements.in dev-requirements.in \
-		--output-file dev-requirements.txt \
+compile_development_dependencies:
+	find ./requirements -type f -name "dev.txt" -delete
+	pip-compile requirements/prod.in requirements/dev.in \
+		--output-file requirements/dev.txt \
 		--no-header \
 		--no-emit-index-url \
 		--verbose
 
-install:
-	pip install -r requirements.txt
+install_production_dependencies:
+	pip install -r requirements/prod.txt
 
-dev-install: install
-	pip install -r dev-requirements.txt
+install_development_dependencies:
+	pip install -r requirements/dev.txt
 
 lint:
 	flake8
