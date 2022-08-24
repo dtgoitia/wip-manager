@@ -73,7 +73,7 @@ def main():
         print("Overwriting current installation...")
 
     if not should_install:
-        print("Installtion aborted")
+        print("Installation aborted")
         exit(1)
 
     install()
